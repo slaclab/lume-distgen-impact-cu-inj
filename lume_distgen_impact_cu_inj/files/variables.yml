@@ -1,0 +1,220 @@
+input_variables:
+
+  SOL1:solenoid_field_scale: 
+      type: scalar
+      default: 0
+      range: [0, 0.55]
+
+  CQ01:b1_gradient:
+      type: scalar
+      default: 0
+      range: [-0.015, 0.015]
+
+  SQ01:b1_gradient: 
+    type: scalar
+    default: 0
+    range: [-0.015, 0.015]
+
+  L0A_phase:dtheta0_deg:
+    type: scalar
+    default: 0
+    range: [-20, 0]
+
+  L0B_phase:dtheta0_deg:
+    type: scalar
+    default: 0
+    range: [-20, 0]
+
+  L0A_scale:voltage:
+    type: scalar
+    default: 0
+    range: [0, 110]
+
+  L0B_scale:voltage:
+    type: scalar
+    default: 0
+    range: [0, 110]
+
+  QA01:b1_gradient:
+    type: scalar
+    default: 0
+    range: [-20, 20]
+
+  QA02:b1_gradient: 
+    type: scalar
+    default: 0
+    range: [-20, 20]
+
+  QE01:b1_gradient:
+    type: scalar
+    default: 0
+    range: [-20, 20]
+
+  QE02:b1_gradient: 
+    type: scalar
+    default: 0
+    range: [-20, 20]
+
+  QE03:b1_gradient:
+    type: scalar
+    default: 0
+    range: [-20, 20]
+
+  QE04:b1_gradient:
+    type: scalar
+    default: 0
+    range: [-20, 20]
+
+output_variables:
+  end_t:
+    type: scalar
+
+  end_mean_z:
+    type: scalar
+  
+  end_moment4_x:
+    type: scalar
+
+  end_moment4_y:
+    type: scalar
+
+  end_moment4_z:
+    type: scalar
+
+  end_loadbalance_min_n_particle:
+    type: scalar
+  
+  end_loadbalance_max_n_particle:
+    type: scalar
+
+  end_n_particle:
+    type: scalar
+
+  end_norm_emit_z:
+    type: scalar
+
+  end_moment3_x:
+    type: scalar
+  
+  end_moment3_y:
+    type: scalar
+  
+  end_moment3_z:
+    type: scalar
+
+  end_mean_y:
+    type: scalar
+
+  end_sigma_y:
+    type: scalar
+
+  end_norm_emit_y:
+    type: scalar
+
+  end_mean_x:
+    type: scalar
+
+  end_sigma_x:
+    type: scalar
+
+  end_norm_emit_x:
+    type: scalar
+
+  end_max_amplitude_x:
+    type: scalar
+
+  end_max_amplitude_y:
+    type: scalar
+
+  end_max_amplitude_z:
+    type: scalar
+
+  end_mean_gamma:
+    type: scalar
+
+  end_mean_beta:
+    type: scalar
+
+  end_max_r:
+    type: scalar
+
+  end_sigma_gamma:
+    type: scalar
+
+  end_moment4_px:
+    type: scalar
+ 
+  end_moment4_py:
+    type: scalar
+
+  end_moment4_pz:
+    type: scalar
+ 
+  end_mean_pz:
+    type: scalar
+
+  end_sigma_pz:
+    type: scalar
+ 
+  end_cov_z__pz:
+    type: scalar
+
+  end_moment3_px:
+    type: scalar
+  
+  end_moment3_py:
+    type: scalar
+
+  end_moment3_pz:
+    type: scalar
+
+  end_mean_py:
+    type: scalar
+  
+  end_sigma_py:
+    type: scalar
+
+  end_cov_y__py:
+    type: scalar
+
+  end_mean_px:
+    type: scalar
+  
+  end_sigma_px:
+    type: scalar
+
+  end_cov_x__px:
+    type: scalar
+
+  end_max_amplitude_px:
+    type: scalar
+  
+  end_max_amplitude_py:
+    type: scalar
+
+  end_max_amplitude_pz:
+    type: scalar
+
+  end_mean_kinetic_energy:
+    type: scalar
+  
+  run_time:
+    name: run_time
+    type: scalar
+
+  end_n_particle_loss:
+    type: scalar
+
+  end_total_charge:
+    type: scalar
+  
+  end_higher_order_energy_spread:
+    type: scalar
+
+  end_norm_emit_xy:
+    type: scalar
+  
+  end_norm_emit_4d:
+    name: end_norm_emit_4d
+    type: scalar
+  
