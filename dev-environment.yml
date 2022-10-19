@@ -8,6 +8,11 @@ dependencies:
   - graphviz
   - python-graphviz
   - prefect[viz]<2.0
+  - numpy
+  - scikit-image
+  - lume-impact
+  - distgen
+  - pandas
   - pip 
   - pip: 
     - git+https://github.com/slaclab/lume-services.git@main
