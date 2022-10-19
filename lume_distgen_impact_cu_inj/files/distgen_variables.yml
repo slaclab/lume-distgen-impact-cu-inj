@@ -21,7 +21,7 @@ input_variables:
   
   vcc_resolution_units:
     type: array
-    value_type: str
+    value_type: string
     default: "um"
 
   total_charge:
