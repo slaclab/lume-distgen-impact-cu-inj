@@ -97,7 +97,6 @@ def itext(impact_object, dpi=72, name=''):
 def make_dashboard(impact_object=None,
                    dat=None,
                    itime=None,
-                   outpath='test/',
                    screen1='YAG02',
                    screen2='YAG03',
                    screen3='OTR2',

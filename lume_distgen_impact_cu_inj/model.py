@@ -35,7 +35,7 @@ class DistgenModel(BaseModel):
     input_variables = DISTGEN_INPUT_VARIABLES
     output_variables = DISTGEN_OUTPUT_VARIABLES
 
-    def __init__(self, *, input_file, configuration, base_settings:dict=None, distgen_output_filename=None):
+    def __init__(self, *, input_file, configuration, distgen_output_filename, base_settings:dict=None):
         self._input_yaml = input_file
         self._base_settings = base_settings
         self._configuration = configuration
@@ -46,7 +46,6 @@ class DistgenModel(BaseModel):
         with open(self._input_yaml, "r") as f:
             distgen_input_yaml = yaml.safe_load(f)
 
-        print(input_variables)
 
         image = input_variables["vcc_array"].value.reshape(input_variables["vcc_size_y"].value, input_variables["vcc_size_x"].value)
 
@@ -72,6 +71,9 @@ class DistgenModel(BaseModel):
                 self._G[key] = val
 
         self._G.run()
+
+        # not sure about the format here...
+        #write_distgen_xy_dist(self._distgen_output_filename, image_rep, #input_variables["vcc_resolution"].value, resolution_units=input_variables#["vcc_resolution_units"].value)
 
         self.output_variables["x"].value = self._G.particles._data["x"]
         self.output_variables["px"].value = self._G.particles._data["px"]

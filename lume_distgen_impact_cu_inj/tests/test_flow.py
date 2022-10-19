@@ -80,9 +80,7 @@ def test_flow_execution(tmp_path):
         distgen_configuration=distgen_configuration, 
         distgen_settings=distgen_settings,
         archive_filesystem_identifier="local",
-        #archive_filename=f"{tmp_path}/archive.hdf5",
         dashboard_image_filesystem_identifier="local",
-        dashboard_image_filename=f"{tmp_path}/dashboard.png",
         archive_dir = dir_path,
         **distgen_input_values, **impact_inputs
     )

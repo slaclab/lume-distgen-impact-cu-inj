@@ -14,7 +14,7 @@ from lume_services.tasks import (
     LoadFile,
     SaveFile,
 )
-from lume_services.files import HDF5File, ImageFile
+from lume_services.files import HDF5File, ImageFile, TextFile
 from lume_model.variables import InputVariable, OutputVariable
 from prefect.storage import Module
 from lume_distgen_impact_cu_inj.model import ImpactModel, DistgenModel, LUMEConfiguration
@@ -98,19 +98,14 @@ def evaluate_distgen(
 
     configuration = LUMEConfiguration(**distgen_configuration)
     distgen_model = DistgenModel(
-        input_file=distgen_input_filename,
+        input_file=DISTGEN_INPUT_FILE,
         configuration=configuration,
         base_settings=distgen_settings,
-        distgen_output_filename=distgen_output_filename,
+        distgen_output_filename=distgen_input_filename,
     )
-
-    print(distgen_input_variables)
-    print(distgen_model)
 
     output_variables = distgen_model.evaluate(distgen_input_variables)
 
-    print(output_variables)
-    print(distgen_model)
     return (distgen_model.G, output_variables)
 
 
@@ -138,9 +133,8 @@ def evaluate_impact(
 
 
 @task(log_stdout=True)
-def create_dashboard(pv_collection_isotime, dashboard_dir, impact_I):
+def create_dashboard(pv_collection_isotime, impact_I):
     DASHBOARD_KWARGS = {
-            'outpath': dashboard_dir,
             'screen1': 'YAG02',
             'screen2': 'YAG03',
             'screen3': 'OTR2',
@@ -185,6 +179,11 @@ def format_archive_filename(pv_collection_isotime, archive_dir):
     return f"{archive_dir}/{PREFECT__CONTEXT__FLOW_ID}_{pv_collection_isotime}.h5"
 
 
+@task
+def format_dashboard_filename(pv_collection_isotime, dashboard_dir):
+    return f"{dashboard_dir}/{PREFECT__CONTEXT__FLOW_ID}_{pv_collection_isotime}.png"
+
+
 with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
 
     # CONFIGURE LUME-SERVICES
@@ -208,10 +207,22 @@ with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
 
     # other parameters
 
-    # FILENAMES NEED TO BE HANDLED FOR DEFAULTS
+    # This could be parsed out to be two distinct models, but here we're assuming distgen output/input not saved globally
     distgen_input_filename = Parameter("distgen_input_filename", default=DISTGEN_INPUT_FILE)
+
     distgen_output_filename = Parameter("distgen_output_filename", default="/tmp/laser.txt")
-    impact_init_archive_file = Parameter("impact_archive_file", default=IMPACT_ARCHIVE_FILE)
+
+    # The impact init from archive in the model.py could be completely substituted 
+    # if file was saved with the updated 
+    # LUME-base serializer https://github.com/slaclab/lume-base/blob/8c548e11672abce3a0cfc22b970b343d46ddba42/lume/serializers/hdf5.py#L15
+    # In this case, we could load the entire model using:
+    #  h5_file = HDF5File(filename="/Users/jacquelinegarrahan/sandbox/lume-distgen-impact-cu-inj/lume_distgen_impact_cu_inj/files/archive.h5", filesystem_identifier="local")
+    #I = h5_file.load_file()
+    # and pass I during ImpactModel init
+
+    impact_init_archive_filename = Parameter("impact_archive_filename", default=IMPACT_ARCHIVE_FILE)
+
+
     dashboard_dir = Parameter("dashboard_dir")
     archive_dir = Parameter("archive_dir")
 
@@ -243,7 +254,7 @@ with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
     )
 
     impact_I, impact_output_variables = evaluate_impact(
-        impact_init_archive_file,
+        impact_init_archive_filename,
         impact_configuration,
         impact_settings,
         prepared_impact_input_vars,
@@ -252,8 +263,9 @@ with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
 
     # dashbard file
     dashboard_file_parameters = save_dashboard_image_task.parameters
-    dashboard_img = create_dashboard(pv_collection_isotime, dashboard_dir, impact_I)
-    dashboard_file_rep = save_dashboard_image_task(dashboard_img, file_type=ImageFile, **dashboard_file_parameters)
+    dashboard_img = create_dashboard(pv_collection_isotime, impact_I)
+    dashboard_filename = format_dashboard_filename(pv_collection_isotime, dashboard_dir)
+    dashboard_file_rep = save_dashboard_image_task(dashboard_img, file_type=ImageFile, filename=dashboard_filename, filesystem_identifier=dashboard_file_parameters["filesystem_identifier"])
     dashboard_file_rep.set_upstream(configure)
 
     # archive file
