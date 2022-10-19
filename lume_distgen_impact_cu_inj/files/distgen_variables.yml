@@ -1,0 +1,62 @@
+input_variables:  
+
+  vcc_array:
+    type: array
+    default: [0,0]
+
+  vcc_size_x:
+    type: scalar
+    default: 640
+    range: [640, 640]
+  
+  vcc_size_y:
+    type: scalar
+    default: 480
+    range: [480, 480]
+  
+  vcc_resolution:
+    type: scalar
+    default: 9
+    range: [9,9]
+  
+  vcc_resolution_units:
+    type: array
+    value_type: str
+    default: "um"
+
+  total_charge:
+    type: scalar
+    default: 0
+    range: [0,inf]
+
+output_variables:
+  x:
+    type: array
+
+  px:
+    type: array
+
+  y: 
+    type: array
+
+  py: 
+    type: array
+
+  z: 
+    type: array
+
+  pz: 
+    type: array
+
+  t:
+    type: array
+
+  status: 
+    type: array
+
+  weight: 
+    type: array
+
+  species:
+    type: array
+    value_type: str

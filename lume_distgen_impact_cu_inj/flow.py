@@ -2,7 +2,8 @@ from typing import Dict
 
 from prefect import Flow, task, case
 from prefect import Parameter
-
+import os
+import numpy as np
 from lume_services.results import Result
 from lume_services.tasks import (
     configure_lume_services,
@@ -13,120 +14,161 @@ from lume_services.tasks import (
     LoadFile,
     SaveFile,
 )
-from lume_services.files import TextFile
+from lume_services.files import HDF5File, ImageFile
 from lume_model.variables import InputVariable, OutputVariable
 from prefect.storage import Module
+from lume_distgen_impact_cu_inj.model import ImpactModel, DistgenModel, LUMEConfiguration
+from lume_distgen_impact_cu_inj.dashboard import make_dashboard
 
-from lume_distgen_impact_cu_inj.model import LumeDistgenImpactCuInj
-from lume_distgen_impact_cu_inj import INPUT_VARIABLES
+from lume_distgen_impact_cu_inj.files import IMPACT_ARCHIVE_FILE, DISTGEN_INPUT_FILE
 
+from lume_distgen_impact_cu_inj import (
+    CU_INJ_MAPPING_TABLE,
+    IMPACT_INPUT_VARIABLES,
+    DISTGEN_INPUT_VARIABLES
+)
 
-@task(log_stdout=True)
-def preprocessing_task(input_variables, misc_settings):
-    """If additional preprocessing of input variables are required, process the
-    variables here. This task is flexible and can absorb other misc settings passed
-    as parameters to the flow.
-
-    Examples:
-        Suppose we have a preprocessing step where we want to scale all values by some
-        multiplier. This task would look like:
-
-        ```python
-
-        @task(log_stdout=True)
-        def preprocessing_task(input_variables, multiplier):
-            for var_name in input_variables.keys():
-                input_variables[var_name].value = input_variables[var_name].value
-                                                        * multiplier
-
-        ```
-
-    """
-    raise NotImplementedError("Called not implemented preprocessing_task in flow.")
+PREFECT__CONTEXT__FLOW_ID = os.environ.get("PREFECT__CONTEXT__FLOW_ID", "local")
 
 
 @task(log_stdout=True)
-def format_file(output_variables):
-    """Task used for organizing an file object. The formatted object must be
-    serializable by the file_type passed in the SaveFile task call.
-    See https://slaclab.github.io/lume-services/services/files/ for more information
-    about interacting with file objects and file systems
+def distgen_preprocessing_task(input_variables):
 
-    Examples:
-        Suppose we have a workflow with two results `text1` and `text2`. We'd like to
-        concatenate the text and save in a text file. This would look like:
-        ```python
+    # scale all values w.r.t. impact factor
+    for var_name, variable in input_variables.items():
 
-        @task(log_stdout=True)
-        def format_file(output_variables):
-            text = output_variables["text1"].value + output_variables["text2"].value
-            return text
+        # downcast
+        if var_name == "vcc_array":
+            value = np.array(variable.value)
+            value = value.astype(np.int8)
 
-        save_file_task = SaveFile()
+            if value.ptp() == 0:
+                raise ValueError(f"EPICS get for vcc_array has zero extent")
 
-        with Flow("my-flow") as flow:
+            variable.value = value
 
-            ... # set up params, evaluate, etc.
+        # make units consistent
+        if var_name == "vcc_resolution_units":
+            if variable.value == "um/px":
+                variable.value = "um"
 
-            output_variables = evaluate(formatted_input_variables)
-            text = format_file(output_variables)
+        if var_name == "total_charge":
+            scaled_val = (
+                variable.value
+                * CU_INJ_MAPPING_TABLE.loc[
+                    CU_INJ_MAPPING_TABLE["impact_name"] == "distgen:total_charge:value", "impact_factor"
+                ].item()
+            )
+            variable.value = scaled_val
 
-            file_parameters = save_file_task.parameters
+    return input_variables
 
-            # save file
-            my_file = save_file_task(
-                text,
-                filename = file_parameters["filename"],
-                filesystem_identifier = file_parameters["filesystem_identifier"],
-                file_type = TextFile # THIS MUST BE PASSED IN THE TASK CALL
+
+@task(log_stdout=True)
+def impact_preprocessing_task(input_variables):
+
+    # scale all values w.r.t. impact factor
+    for var_name, variable in input_variables.items():
+
+        if (
+            CU_INJ_MAPPING_TABLE["impact_name"]
+            .str.contains(var_name, regex=False)
+            .any()
+        ):
+            scaled_val = (
+                variable.value
+                * CU_INJ_MAPPING_TABLE.loc[
+                    CU_INJ_MAPPING_TABLE["impact_name"] == var_name, "impact_factor"
+                ].item()
             )
 
-        ```
+            variable.value = scaled_val
 
-    """
-    raise NotImplementedError("Called not implemented format_file in flow.")
+    return input_variables
 
 
-@task(log_stdout=True)
-def format_result(
-    input_variables: Dict[str, InputVariable],
-    output_variables: Dict[str, OutputVariable],
+@task(log_stdout=True, nout=2)
+def evaluate_distgen(
+    distgen_configuration,
+    distgen_input_filename,
+    distgen_settings,
+    distgen_output_filename,
+    distgen_input_variables,
 ):
-    """Formats model results into a LUME-services Result object. This task should be
-    modified for custom organization of outputs.
 
-    NOTE: Here we use the generic Result class defined in LUME-services https://slaclab.github.io/lume-services/api/results/
-    Other Result types can be easily configured by subclassing this Result class and
-    LUME-services pre-packages a result for Impact simulations: https://slaclab.github.io/lume-services/api/results/#lume_services.results.impact
+    configuration = LUMEConfiguration(**distgen_configuration)
+    distgen_model = DistgenModel(
+        input_file=distgen_input_filename,
+        configuration=configuration,
+        base_settings=distgen_settings,
+        distgen_output_filename=distgen_output_filename,
+    )
+
+    print(distgen_input_variables)
+    print(distgen_model)
+
+    output_variables = distgen_model.evaluate(distgen_input_variables)
+
+    print(output_variables)
+    print(distgen_model)
+    return (distgen_model.G, output_variables)
 
 
-    Args:
-        input_variables (Dict[str, InputVariable]): Dictionary mapping input variable
-            name to LUME-model variable.
-        output_variables (Dict[str, OutputVariable]): Dictionary mapping output variable
-            name to LUME-model variable.
+@task(log_stdout=True, nout=2)
+def evaluate_impact(
+    impact_archive_file,
+    impact_configuration: dict,
+    impact_settings: dict,
+    input_variables,
+    distgen_model,
+):
+    particles = distgen_model.particles
+    impact_configuration = LUMEConfiguration(**impact_configuration)
 
-    Returns:
-        Result: Lume-Services Result object.
+    model = ImpactModel(
+        archive_file=impact_archive_file,
+        configuration=impact_configuration,
+        base_settings=impact_settings,
+    )
+    output_variables = model.evaluate(list(input_variables.values()), particles)
 
-    """  # noqa
+    return (model.I, output_variables)
 
-    inputs = {var_name: var.value for var_name, var in input_variables.items()}
-    outputs = {var_name: var.value for var_name, var in output_variables.items()}
 
-    return Result(inputs=inputs, outputs=outputs)
 
 
 @task(log_stdout=True)
-def evaluate(formatted_input_vars, settings=None):
+def create_dashboard(pv_collection_isotime, dashboard_dir, impact_I):
+    DASHBOARD_KWARGS = {
+            'outpath': dashboard_dir,
+            'screen1': 'YAG02',
+            'screen2': 'YAG03',
+            'screen3': 'OTR2',
+            'ylim' : (0, 2e-6), # Emittance scale                        
+            'name' : f"{PREFECT__CONTEXT__FLOW_ID}_{pv_collection_isotime}"
+        }
 
-    if settings is None:
-        settings = {}
+    return make_dashboard(impact_I, itime=pv_collection_isotime, **DASHBOARD_KWARGS)
 
-    model = LumeDistgenImpactCuInj(**settings)
 
-    return model.evaluate(formatted_input_vars)
+@task(log_stdout=True)
+def format_result(pv_collection_isotime, impact_settings, impact_input_variables, impact_configuration, impact_output_variables, dashboard_file, archive_file):
 
+    impact_settings.update(
+        {var_name: var.value for var_name, var in impact_input_variables.items()}
+    )
+
+    # output vars second item in tuple
+    impact_outputs = {var_name: var.value for var_name, var in impact_output_variables.items()}
+
+    return ImpactResult(
+        inputs=impact_settings,
+        outputs=impact_outputs,
+        plot_file=dashboard_file,
+        archive= archive_file,
+        pv_collection_isotime= pv_collection_isotime,
+        config= impact_configuration
+    )
 
 # DEFINE TASK FOR SAVING DB RESULT
 # See docs: https://slaclab.github.io/lume-services/api/tasks/#lume_services.tasks.db.SaveDBResult
@@ -134,15 +176,13 @@ save_db_result_task = SaveDBResult(timeout=30)
 
 # DEFINE TASK FOR SAVING FILE
 # See docs: https://slaclab.github.io/lume-services/api/tasks/#lume_services.tasks.file.SaveFile
-save_file_task = SaveFile(timeout=30)
+save_dashboard_image_task = SaveFile(parameter_base="dashboard_image", timeout=30)
+save_archive_file_task = SaveFile(parameter_base="archive")
+save_distgen_file_task = SaveFile(parameter_base="distgen")
 
-# If your model requires loading a file object, you use the task pre-packaged
-# with LUME-services:
-# load_file_task = LoadFile(timeout=30)
-
-# If your model requires loading a results database entry, you can use the LoadDBResult
-# task packaged with LUME-services:
-# load_db_result_task = LoadDBResult(timeout=10)
+@task
+def format_archive_filename(pv_collection_isotime, archive_dir):
+    return f"{archive_dir}/{PREFECT__CONTEXT__FLOW_ID}_{pv_collection_isotime}.h5"
 
 
 with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
@@ -156,80 +196,77 @@ with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
     running_local = check_local_execution()
 
     # SET UP INPUT VARIABLE PARAMETERS.
-    # These are parameters that can be supplied to the workflow at runtime
-    input_variable_parameter_dict = {
+    distgen_input_variable_parameter_dict = {
         var_name: Parameter(var_name, default=var.default)
-        for var_name, var in INPUT_VARIABLES.items()
+        for var_name, var in DISTGEN_INPUT_VARIABLES.items()
     }
 
-    # additional settings may be organized as parameters
-    # setting_1 = Parameter("setting_1")
-    # setting_2 = Parameter("setting_2")
+    impact_input_variable_parameter_dict = {
+        var_name: Parameter(var_name, default=var.default)
+        for var_name, var in IMPACT_INPUT_VARIABLES.items()
+    }
 
-    # If your model requires loading a file object, you can use the LoadFile task
-    # pre-packaged with LUME-services. The load_file_task is defined in a comment above
-    # outside of this flow scope. The task parameters can be conveniently accessed for
-    # adding to flow parameters:
-    # file_parameters = load_file_task.parameters
-    # loaded_obj = load_file_task(**file_parameters)
+    # other parameters
 
-    # If your model requires loading a result object stored in the database, you can
-    # use the LoadDBResult task pre-packaged with LUME-services The load_db_result_task
-    # is defined in a comment above outside of this flow scope. The task parameters can
-    # be conveniently accessed for adding to flow parameters:
-    # result_parameters = load_db_result_task.parameters
-    # db_result = load_db_result(flow_id=flow_id_of_result_flow, attribute="outputs")
-    # To access a sepecific value returned in the db_result, in this case the value of
-    # the output variable named "output1":
-    # db_result = load_db_result(
-    #                   flow_id=flow_id_of_result_flow,
-    #                   attribute="outputs",
-    #                   attribute_index=["output1"]
-    # )
+    # FILENAMES NEED TO BE HANDLED FOR DEFAULTS
+    distgen_input_filename = Parameter("distgen_input_filename", default=DISTGEN_INPUT_FILE)
+    distgen_output_filename = Parameter("distgen_output_filename", default="/tmp/laser.txt")
+    impact_init_archive_file = Parameter("impact_archive_file", default=IMPACT_ARCHIVE_FILE)
+    dashboard_dir = Parameter("dashboard_dir")
+    archive_dir = Parameter("archive_dir")
+
+    distgen_settings = Parameter("distgen_settings")
+    distgen_configuration = Parameter("distgen_configuration")
+    impact_configuration = Parameter("impact_configuration")
+    impact_settings = Parameter("impact_settings")
+    pv_collection_isotime = Parameter("pv_collection_isotime")
 
     # ORGANIZE INPUT VARIABLE VALUES LUME-MODEL VARIABLES
-    formatted_input_variables = prepare_lume_model_variables(
-        input_variable_parameter_dict, INPUT_VARIABLES
+    formatted_distgen_input_vars = prepare_lume_model_variables(
+        distgen_input_variable_parameter_dict, DISTGEN_INPUT_VARIABLES
     )
 
-    # If additional preprocessing is necessary, the user can implement a preprocessing task
-    # formatted_input_vars = preprocessing_task(formatted_input_vars)
+    prepared_distgen_input_vars = distgen_preprocessing_task(formatted_distgen_input_vars)
 
-    # RUN EVALUATION
-    output_variables = evaluate(formatted_input_variables)
-    # If we had settings we were passing to the model, it would look like:
-    # results = predict(formatted_input_vars, settings={
-    #    "setting_1": setting_1,
-    #    "setting_2": setting_2
-    # })
+    formatted_impact_input_vars = prepare_lume_model_variables(
+        impact_input_variable_parameter_dict, IMPACT_INPUT_VARIABLES
+    )
 
-    # SAVE A FILE WITH SOME FORMATTED DATA
-    # This assumes the output is a text file, but see https://slaclab.github.io/lume-services/api/files/files/ # noqa
-    # for custom types. If the formats supported do not suit your needs, you can
-    # alternatively subclass File for custom serialization.
-    file_data = format_file(output_variables)
+    prepared_impact_input_vars = impact_preprocessing_task(formatted_impact_input_vars)
 
+    distgen_G, distgen_output_variables = evaluate_distgen(
+        distgen_configuration,
+        distgen_input_filename,
+        distgen_settings,
+        distgen_output_filename,
+        prepared_distgen_input_vars
+    )
 
-    # MARK CONFIGURATION OF LUME_SERVICES AS AN UPSTREAM TASK
-    # tasks using backend services like filesystem and results db must mark configure
-    # as an upstream task
+    impact_I, impact_output_variables = evaluate_impact(
+        impact_init_archive_file,
+        impact_configuration,
+        impact_settings,
+        prepared_impact_input_vars,
+        distgen_G
+    )
 
-    # add "filename" and "filesystem_identifier to the flow parameters"
-    file_parameters = save_file_task.parameters
-    saved_file_rep = save_file_task(file_data, file_type=TextFile, **file_parameters)
+    # dashbard file
+    dashboard_file_parameters = save_dashboard_image_task.parameters
+    dashboard_img = create_dashboard(pv_collection_isotime, dashboard_dir, impact_I)
+    dashboard_file_rep = save_dashboard_image_task(dashboard_img, file_type=ImageFile, **dashboard_file_parameters)
+    dashboard_file_rep.set_upstream(configure)
 
-
-    # MARK CONFIGURATION OF LUME_SERVICES AS AN UPSTREAM TASK
-    # tasks using backend services like filesystem and results db must mark configure
-    # as an upstream task
-    saved_file_rep.set_upstream(configure)
-
+    # archive file
+    archive_file_parameters = save_archive_file_task.parameters
+    archive_filename = format_archive_filename(pv_collection_isotime, archive_dir)
+    archive_file_rep = save_archive_file_task(impact_I, file_type=HDF5File,
+    filename=archive_filename, filesystem_identifier=archive_file_parameters["filesystem_identifier"])
+    archive_file_rep.set_upstream(configure)
 
     # SAVE RESULTS TO RESULTS DATABASE, requires LUME-services results backend 
     with case(running_local, False):
         # CREATE LUME-services Result object
-        formatted_result = format_result(
-            input_variables=formatted_input_variables, output_variables=output_variables
+        formatted_result = format_result(pv_collection_isotime, impact_settings, prepared_impact_input_vars, impact_configuration, impact_output_variables, dashboard_file_rep, archive_file_rep
         )
 
         # RUN DATABASE_SAVE_TASK
