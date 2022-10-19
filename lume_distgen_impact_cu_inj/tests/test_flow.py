@@ -69,7 +69,7 @@ def test_flow_execution(tmp_path):
                     "QE04:b1_gradient": -3.20496,
     }
 
-    flow.set_reference_tasks([impact_output_variables, archive_file_rep])
+    flow.set_reference_tasks([impact_output_variables])
 
     flow_run = flow.run(
         dashboard_dir = dir_path, 
