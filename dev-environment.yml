@@ -4,7 +4,6 @@ channels:
 dependencies:
   - click
   - pydantic # until lume-services registered with conda
-  - lume-model>=1.4 # until lume-services registered with conda
   - graphviz
   - python-graphviz
   - prefect[viz]<2.0
@@ -13,8 +12,10 @@ dependencies:
   - lume-impact
   - distgen
   - pandas
+  - importlib-metadata
   - pip 
   - pip: 
+    - git+https://github.com/slaclab/lume-model.git@main # until lume-services registered with conda
     - git+https://github.com/slaclab/lume-services.git@main
 
   # dev

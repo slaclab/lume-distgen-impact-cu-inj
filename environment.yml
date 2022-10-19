@@ -3,7 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - prefect<2.0 # until lume-services registered with conda
-  - lume-model>=1.4 # until lume-services registered with conda
   - numpy
   - scikit-image
   - lume-impact
@@ -11,4 +10,5 @@ dependencies:
   - pandas
   - pip 
   - pip: 
+    - git+https://github.com/slaclab/lume-model.git@main # until lume-services registered with conda
     - git+https://github.com/slaclab/lume-services.git@main
