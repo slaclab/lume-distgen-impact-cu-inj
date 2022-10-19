@@ -59,4 +59,4 @@ output_variables:
 
   species:
     type: array
-    value_type: str
+    value_type: string
