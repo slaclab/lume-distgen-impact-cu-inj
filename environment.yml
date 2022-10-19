@@ -9,6 +9,6 @@ dependencies:
   - distgen
   - pandas
   - pip 
+  - lume-model>=1.4.6
   - pip: 
-    - git+https://github.com/slaclab/lume-model.git@master # until lume-services registered with conda
     - git+https://github.com/slaclab/lume-services.git@main
