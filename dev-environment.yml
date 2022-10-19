@@ -15,7 +15,7 @@ dependencies:
   - importlib-metadata
   - pip 
   - pip: 
-    - git+https://github.com/slaclab/lume-model.git@main # until lume-services registered with conda
+    - git+https://github.com/slaclab/lume-model.git@master # until lume-services registered with conda
     - git+https://github.com/slaclab/lume-services.git@main
 
   # dev
