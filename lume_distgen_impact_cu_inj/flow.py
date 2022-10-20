@@ -1,7 +1,7 @@
 from typing import Dict
 
 from prefect import Flow, task, case
-from prefect import Parameter
+from prefect import Parameter, DateTimeParameter
 import os
 import numpy as np
 from lume_services.results import Result
@@ -230,7 +230,7 @@ with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
     distgen_configuration = Parameter("distgen_configuration")
     impact_configuration = Parameter("impact_configuration")
     impact_settings = Parameter("impact_settings")
-    pv_collection_isotime = Parameter("pv_collection_isotime")
+    pv_collection_isotime = DateTimeParameter("pv_collection_isotime")
 
     # ORGANIZE INPUT VARIABLE VALUES LUME-MODEL VARIABLES
     formatted_distgen_input_vars = prepare_lume_model_variables(
