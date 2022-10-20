@@ -4,7 +4,7 @@ from prefect import Flow, task, case
 from prefect import Parameter
 import os
 import numpy as np
-from lume_services.results import Result
+from lume_services.results import ImpactResult
 from lume_services.tasks import (
     configure_lume_services,
     prepare_lume_model_variables,
