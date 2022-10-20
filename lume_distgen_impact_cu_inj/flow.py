@@ -17,6 +17,7 @@ from lume_services.tasks import (
 from lume_services.files import HDF5File, ImageFile, TextFile
 from lume_model.variables import InputVariable, OutputVariable
 from prefect.storage import Module
+from prefect.core.parameter import DateTimeParameter
 from lume_distgen_impact_cu_inj.model import ImpactModel, DistgenModel, LUMEConfiguration
 from lume_distgen_impact_cu_inj.dashboard import make_dashboard
 
