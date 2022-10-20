@@ -1,7 +1,7 @@
 from typing import Dict
 
 from prefect import Flow, task, case
-from prefect import Parameter, DateTimeParameter
+from prefect import Parameter
 import os
 import numpy as np
 from lume_services.results import Result
