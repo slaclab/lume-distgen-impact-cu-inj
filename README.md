@@ -119,6 +119,6 @@ This README was automatically generated using the template defined in https://gi
     "project_name": "LUME Distgen Impact Cu Inj", 
     "repo_name": "lume-distgen-impact-cu-inj", 
     "package": "lume_distgen_impact_cu_inj",
-    "model_class": "LumeDistgenImpactCuInj"
+    "model_class": "ImpactModel"
 }
 ```
