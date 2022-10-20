@@ -196,7 +196,7 @@ with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
 
     # SET UP INPUT VARIABLE PARAMETERS.
     distgen_input_variable_parameter_dict = {
-        var_name: Parameter(var_name, default=var.default)
+        var_name: Parameter(var_name, default=var.default.tolist()) if isinstance(var.default, np.ndarray) else Parameter(var_name, default=var.default)
         for var_name, var in DISTGEN_INPUT_VARIABLES.items()
     }
 
