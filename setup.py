@@ -16,7 +16,7 @@ setup(
     packages=find_packages(),
     #  license="...",
     install_requires=requirements,
-    url="https://github.com/jacquelinegarrahan/lume-distgen-impact-cu-inj",
+    url="https://github.com/slaclab/lume-distgen-impact-cu-inj",
     include_package_data=True,
     python_requires=">=3.8",
     entry_points={

@@ -115,7 +115,7 @@ This README was automatically generated using the template defined in https://gi
     "author": "Jacqueline Garrahan",
     "email": "jacquelinegarrahan@gmail.com",
     "github_username": "jacquelinegarrahan",
-    "github_url": "https://github.com/jacquelinegarrahan/lume-distgen-impact-cu-inj",
+    "github_url": "https://github.com/slaclab/lume-distgen-impact-cu-inj",
     "project_name": "LUME Distgen Impact Cu Inj", 
     "repo_name": "lume-distgen-impact-cu-inj", 
     "package": "lume_distgen_impact_cu_inj",
