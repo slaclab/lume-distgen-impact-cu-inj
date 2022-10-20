@@ -22,7 +22,7 @@ setup(
     entry_points={
         "orchestration": [
             "lume_distgen_impact_cu_inj.model=\
-                lume_distgen_impact_cu_inj.model:LumeDistgenImpactCuInj",
+                lume_distgen_impact_cu_inj.model:ImpactModel",
             "lume_distgen_impact_cu_inj.flow=\
                 lume_distgen_impact_cu_inj.flow:flow",
         ]
