@@ -112,7 +112,7 @@ def evaluate_distgen(
 
 @task(log_stdout=True, nout=2)
 def evaluate_impact(
-    impact_archive_file,
+   # impact_archive_file,
     impact_configuration: dict,
     impact_settings: dict,
     input_variables,
@@ -122,7 +122,7 @@ def evaluate_impact(
     impact_configuration = LUMEConfiguration(**impact_configuration)
 
     model = ImpactModel(
-        archive_file=impact_archive_file,
+        archive_file=IMPACT_ARCHIVE_FILE,
         configuration=impact_configuration,
         base_settings=impact_settings,
     )
@@ -221,7 +221,7 @@ with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
     #I = h5_file.load_file()
     # and pass I during ImpactModel init
 
-    impact_init_archive_filename = Parameter("impact_archive_filename", default=IMPACT_ARCHIVE_FILE)
+    #impact_init_archive_filename = Parameter("impact_archive_filename", default=IMPACT_ARCHIVE_FILE)
 
 
     dashboard_dir = Parameter("dashboard_dir")
@@ -255,7 +255,7 @@ with Flow("lume-distgen-impact-cu-inj", storage=Module(__name__)) as flow:
     )
 
     impact_I, impact_output_variables = evaluate_impact(
-        impact_init_archive_filename,
+       # impact_init_archive_filename,
         impact_configuration,
         impact_settings,
         prepared_impact_input_vars,
