@@ -13,6 +13,7 @@ dependencies:
   - lume-impact
   - distgen
   - pandas
+  - pyepics
   - pip 
   - lume-model>=1.4.6
   - pip: 
